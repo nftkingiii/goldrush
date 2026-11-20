@@ -1,0 +1,74 @@
+# Not registered. base_url is the intended Railway address and is a placeholder until the service is deployed.
+# id and slug were checked as free on the devnode miner list on 2026-11-20 (re-check before registering).
+version: "1"
+kind: miner
+id: 7310051
+slug: goldrush-gold-price
+protocol: generic
+name: Gold Rush Historical Gold Price
+description: >
+  Historical gold price in US and Australian dollars per troy ounce for a named month, a year or a range of
+  months, from 1960 to the latest World Bank month. Used with Queensland gold mining history. US dollar figures
+  are the World Bank Pink Sheet monthly gold series as published; Australian dollar figures are derived with the
+  Reserve Bank of Australia month-end A$1=US$ rate and say so. Months outside the open series are listed under
+  not_found, never filled in.
+base_url: https://goldrush-app.up.railway.app
+
+rate_limit_per_sec: 1
+cache_ttl_sec: 3600
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+
+docs:
+  website: https://goldrush-app.up.railway.app/health
+
+limitations:
+  - code: SERIES_STARTS_1960
+    message: The openly licensed monthly series starts in January 1960. Earlier months return not_found.
+  - code: MAX_PARAM_LENGTH
+    message: question must be at most 256 characters
+    param: question
+    property: length
+    value_num: 256
+    operator: lte
+
+endpoints:
+  - path: /price
+    external_path: /price
+    method: GET
+    description: >
+      RESEARCH_QUERY_GENERAL asking for the gold price in a month or period. Answers "what was the price of gold
+      in March 1980 in US and Australian dollars" or "gold price from 1975 to 1977" with a monthly list of
+      usd_per_oz and aud_per_oz, the series name and source URL for each month. At most 120 months per question.
+    intents: [RESEARCH_QUERY_GENERAL]
+    params:
+      query:
+        required:
+          - name: question
+            type: string
+            intents: ["*"]
+            description: "The question, at most 256 characters, naming gold and one month (March 1980), one year (1980) or a range of two months or two years (1975 to 1977). Example: What was the price of gold in March 1980 in USD and AUD?"
+
+input_schema:
+  type: object
+  required: [question]
+  properties:
+    question:
+      type: string
+      description: A question naming gold and a month, a year or a range.
+
+semantics:
+  signal_mapping:
+    label_field: brief
+  supported_intents:
+    - RESEARCH_QUERY_GENERAL
+
+intent_mapping:
+  RESEARCH_QUERY_GENERAL:
+    endpoint: /price
+    input:
+      question: { from: question }
+    output:
+      answer: { path: answer }
+      source_count: { path: source_count }
+      sources: { path: sources }

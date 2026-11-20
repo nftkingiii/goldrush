@@ -1,0 +1,77 @@
+# Not registered. base_url is the intended Railway address and is a placeholder until the service is deployed.
+# id and slug were checked as free on the devnode miner list on 2026-11-20 (re-check before registering).
+version: "1"
+kind: miner
+id: 7310050
+slug: goldrush-qld-history
+protocol: generic
+name: Gold Rush Queensland Mine History
+description: >
+  Queensland historical gold mines, geology and mining history: reported production, closure year with the
+  reason quoted from the source, and ownership or tenure history, for a gold working named as the Geological
+  Survey of Queensland records it (or by its GSQ site number, the same key as the survey's MINOCC record).
+  Every figure carries its source and a quoted passage. Different sources keep their own values and are never
+  merged or estimated; anything no source gives is listed under not_found. Complements the survey's own record,
+  which holds location and size band but not production, closure or owners.
+base_url: https://goldrush-app.up.railway.app
+
+rate_limit_per_sec: 1
+cache_ttl_sec: 3600
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+
+docs:
+  website: https://goldrush-app.up.railway.app/health
+
+limitations:
+  - code: QUEENSLAND_GOLD_ONLY
+    message: Covers the 8,132 Queensland gold workings in the Geological Survey of Queensland MINOCC record. Production, closure and ownership are held only for sites with a cited source; for the rest the answer says not_found.
+  - code: MAX_PARAM_LENGTH
+    message: question must be at most 256 characters
+    param: question
+    property: length
+    value_num: 256
+    operator: lte
+
+endpoints:
+  - path: /ask
+    external_path: /ask
+    method: GET
+    description: >
+      RESEARCH_QUERY_GENERAL about one Queensland historical gold mine or lode. Answers "how much gold did
+      Mount Morgan produce, when and why did it close, who owned it" with production figures (amount, unit,
+      period, source), closure year and quoted reason, owners and tenure, the survey's site number, status,
+      location and size band, conflicts between sources, and a not_found list. Also returns monthly gold prices
+      when the question asks for the price of gold in a month or year.
+    intents: [RESEARCH_QUERY_GENERAL]
+    params:
+      query:
+        required:
+          - name: question
+            type: string
+            intents: ["*"]
+            description: "The research question, at most 256 characters. Name one Queensland gold mine or lode as the Geological Survey of Queensland records it, for example: Tell me about the Mount Morgan gold mine, Queensland: who owned it, how much gold it produced, and when and why it closed. Or give 'site 494270'."
+
+input_schema:
+  type: object
+  required: [question]
+  properties:
+    question:
+      type: string
+      description: A question about one Queensland historical gold mine, by name or GSQ site number.
+
+semantics:
+  signal_mapping:
+    label_field: brief
+  supported_intents:
+    - RESEARCH_QUERY_GENERAL
+
+intent_mapping:
+  RESEARCH_QUERY_GENERAL:
+    endpoint: /ask
+    input:
+      question: { from: question }
+    output:
+      answer: { path: answer }
+      source_count: { path: source_count }
+      sources: { path: sources }
