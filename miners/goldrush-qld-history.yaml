@@ -1,4 +1,4 @@
-# Not registered. base_url is the intended Railway address and is a placeholder until the service is deployed.
+# Not registered yet. base_url is the live Railway service.
 # id and slug were checked as free on the devnode miner list on 2026-11-20 (re-check before registering).
 version: "1"
 kind: miner
@@ -15,7 +15,7 @@ description: >
   text and Geoscience Australia company data. Every figure carries its source and a quoted passage. Different
   sources keep their own values and are never merged or estimated; disagreements are listed as conflicts, and
   anything no source gives is listed under not_found. A closure reason is given only where a source states it.
-base_url: https://goldrush-app.up.railway.app
+base_url: https://goldrush.up.railway.app
 
 rate_limit_per_sec: 1
 cache_ttl_sec: 3600
@@ -23,7 +23,7 @@ circuit_threshold: 5
 circuit_cooldown_seconds: 30
 
 docs:
-  website: https://goldrush-app.up.railway.app/health
+  website: https://goldrush.up.railway.app/health
 
 limitations:
   - code: QUEENSLAND_GOLD_ONLY

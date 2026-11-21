@@ -1,4 +1,4 @@
-# Not registered. base_url is the intended Railway address and is a placeholder until the service is deployed.
+# Not registered yet. base_url is the live Railway service.
 # id and slug were checked as free on the devnode miner list on 2026-11-20 (re-check before registering).
 version: "1"
 kind: miner
@@ -12,7 +12,7 @@ description: >
   are the World Bank Pink Sheet monthly gold series as published; Australian dollar figures are derived with the
   Reserve Bank of Australia month-end A$1=US$ rate and say so. Months outside the open series are listed under
   not_found, never filled in.
-base_url: https://goldrush-app.up.railway.app
+base_url: https://goldrush.up.railway.app
 
 rate_limit_per_sec: 1
 cache_ttl_sec: 3600
@@ -20,7 +20,7 @@ circuit_threshold: 5
 circuit_cooldown_seconds: 30
 
 docs:
-  website: https://goldrush-app.up.railway.app/health
+  website: https://goldrush.up.railway.app/health
 
 limitations:
   - code: SERIES_STARTS_1960
