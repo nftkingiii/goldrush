@@ -15,7 +15,7 @@ const yamls: Record<string, Buffer> = {
 
 const allowed = createLimiter(30);
 
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://goldrush");
   const send = (status: number, body: unknown) => {
     res.writeHead(status, { "content-type": "application/json" });
@@ -36,8 +36,13 @@ const server = createServer((req, res) => {
   const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? req.socket.remoteAddress ?? "unknown";
   if (!allowed(ip)) return send(429, { error: "rate_limited" });
 
-  const { status, body } = url.pathname === "/ask" ? handle.ask(url.searchParams) : handle.price(url.searchParams);
-  send(status, body);
+  try {
+    const { status, body } = url.pathname === "/ask" ? await handle.askAsync(url.searchParams) : handle.price(url.searchParams);
+    send(status, body);
+  } catch (e) {
+    console.error("ask failed", (e as Error).message);
+    send(500, { error: "internal_error" });
+  }
 });
 
 server.listen(Number(process.env.PORT ?? 8080), () => console.log("goldrush listening"));

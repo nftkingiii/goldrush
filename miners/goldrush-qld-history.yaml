@@ -15,6 +15,12 @@ description: >
   text and Geoscience Australia company data. Every figure carries its source and a quoted passage. Different
   sources keep their own values and are never merged or estimated; disagreements are listed as conflicts, and
   anything no source gives is listed under not_found. A closure reason is given only where a source states it.
+  Also answers land and rights questions for a site by live point queries to the official services: mining and
+  exploration tenure (tenure id, type, holder, status, grant and expiry dates), National Native Title Tribunal
+  determinations, applications and ILUAs, and land status (protected areas, Queensland Heritage Register places,
+  abandoned mines). Each record says whether it lies over the site point or within 2 km, and carries its source,
+  query URL, record id and the time it was checked. An expiry date, or the absence of a tenure, does not show that
+  ground is available. Also gives the closure-year gold price in today's US dollars (US CPI-U purchasing power).
 base_url: https://goldrush.up.railway.app
 
 rate_limit_per_sec: 1
@@ -26,6 +32,8 @@ docs:
   website: https://goldrush.up.railway.app/health
 
 limitations:
+  - code: LAND_LIVE_QUERIES
+    message: Land and rights answers query the Queensland Government and National Native Title Tribunal map services at answer time (2 km buffer, cached 24 hours per site). A layer that does not answer is listed under not_found with the reason. Tenure expiry dates and the absence of a tenure do not establish that ground is available; that needs legal confirmation. Native title records are as published by the NNTT on the checked date.
   - code: QUEENSLAND_GOLD_ONLY
     message: Covers the 8,132 Queensland gold workings in the Geological Survey of Queensland MINOCC record. Of those, about 2,590 have a production figure, 2,450 a whole-site gold total, 2,450 years worked and 2,050 a tenure holder or company in MINOCC 2017 (a 2017 release); for the rest the answer says not_found.
   - code: MAX_PARAM_LENGTH
@@ -45,7 +53,11 @@ endpoints:
       period as integer years, source and record), closure year and quoted reason, years worked, owners and tenure, the
       survey's site number (site_no), status, location and size band, conflicts between sources, and a not_found list.
       The structured fields are top-level keys of the response next to answer and sources. Also returns monthly gold prices
-      when the question asks for the price of gold in a month or year.
+      when the question asks for the price of gold in a month or year. Land and rights questions ("who holds the tenure at
+      Mount Morgan", "native title at Brilliant Lode", "land status of site 494270", "everything about land and rights at
+      Mount Morgan") return tenure, native_title and land_status rows, each with source_ref, source_url, record id, whether it
+      contains the site point or lies within 2 km, and checked_at, plus a fixed caveat. "Gold price at closure vs today for
+      Brilliant Lode" returns gold_price_real: the closure-year price and the same amount in today's US dollars (US CPI-U).
     intents: [RESEARCH_QUERY_GENERAL]
     params:
       query:

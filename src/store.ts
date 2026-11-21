@@ -78,6 +78,18 @@ export interface Store {
   minocc: { source: Source; coverage: Record<string, number>; join: Record<string, unknown> };
   records: Map<number, EvidenceRecord[]>;
   gold: GoldMonths;
+  cpi: Cpi;
+}
+
+export interface Cpi {
+  series: string;
+  url: string;
+  series_page: string;
+  licence: string;
+  fetched: string;
+  months: Map<string, number>;
+  first: string;
+  last: string;
 }
 
 export interface GoldMonths {
@@ -131,6 +143,8 @@ export function loadStore(dir = new URL("../data/", import.meta.url)): Store {
   const g = read("gold-monthly.json");
   const months = new Map<string, { usd: number; fx: number | null; fx_date: string | null }>();
   for (const m of g.months) months.set(m.m, { usd: m.usd, fx: m.fx, fx_date: m.fx_date });
+  const c = read("cpi.json");
+  const cpi: Cpi = { series: c.series, url: c.url, series_page: c.series_page, licence: c.licence, fetched: c.fetched, months: new Map(c.months as [string, number][]), first: c.months[0][0], last: c.months.at(-1)[0] };
   return {
     built: idx.built,
     datasets: idx.datasets,
@@ -140,5 +154,6 @@ export function loadStore(dir = new URL("../data/", import.meta.url)): Store {
     minocc: { source: mo.source, coverage: mo.coverage, join: mo.join },
     records,
     gold: { gold: g.gold, fx: g.fx, months, first: g.months[0].m, last: g.months.at(-1).m },
+    cpi,
   };
 }
