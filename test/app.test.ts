@@ -148,17 +148,40 @@ test("gold price for two named months is an inclusive range", () => {
   assert.deepEqual(body.gold_price.map((r: Body) => r.month), ["2010-01", "2010-02", "2010-03"]);
 });
 
-test("gold price before the open series starts is not_found, not filled in", () => {
-  const { status, body } = ask("gold price in March 1903") as { status: number; body: Body };
+test("gold price before 1960 is the official US price, labelled as official, with no A$ figure", () => {
+  const { status, body } = ask("gold price in 1917") as { status: number; body: Body };
   assert.equal(status, 200);
-  assert.deepEqual(body.gold_price, []);
-  assert.match(body.not_found[0], /covers 1960-01/);
+  assert.equal(body.gold_price.length, 12);
+  assert.ok(body.gold_price.every((r: Body) => r.usd_per_oz === 20.67 && r.price_basis === "official" && r.aud_per_oz === null));
+  assert.equal(body.gold_price[0].source_ref, "US-OFFICIAL-GOLD-PRICE");
+  assert.match(body.gold_price[0].source_url, /federalreservehistory\.org/);
+  assert.match(body.answer, /not a market average/);
+  assert.ok(body.not_found.some((n: string) => /Australia used the pound until 1966/.test(n)));
 });
 
-test("a range that starts before 1960 returns the covered months and lists the rest", () => {
+test("the official price moves to $35 from February 1934 and notes the 1933 float", () => {
+  const { body } = ask("gold price from 1933 to 1934") as { body: Body };
+  const by = Object.fromEntries(body.gold_price.map((r: Body) => [r.month, r]));
+  assert.equal(by["1933-03"].usd_per_oz, 20.67);
+  assert.equal(by["1933-03"].note, undefined);
+  assert.match(by["1933-06"].note, /off gold from April 1933/);
+  assert.match(by["1934-01"].note, /\$35\.00 on 31 January 1934/);
+  assert.equal(by["1934-02"].usd_per_oz, 35);
+});
+
+test("gold price before 1900 is not_found, not filled in", () => {
+  const { status, body } = ask("gold price in March 1895") as { status: number; body: Body };
+  assert.equal(status, 200);
+  assert.deepEqual(body.gold_price, []);
+  assert.match(body.not_found[0], /held from 1900-03/);
+});
+
+test("a range across 1960 joins official and market rows, each labelled", () => {
   const { body } = ask("gold price from 1958 to 1960") as { body: Body };
-  assert.equal(body.gold_price.length, 12);
-  assert.match(body.not_found[0], /1958-01 to 1959-12 \(24 months\)/);
+  assert.equal(body.gold_price.length, 36);
+  assert.equal(body.gold_price[0].price_basis, "official");
+  assert.equal(body.gold_price.at(-1).price_basis, "market");
+  assert.equal(body.gold_price.at(-1).source_ref, "WB-PINKSHEET-GOLD");
 });
 
 test("months with no RBA exchange rate keep USD and say the AUD is missing", () => {

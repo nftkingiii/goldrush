@@ -63,7 +63,11 @@ export interface PriceRow {
   usd_per_oz: number;
   aud_per_oz: number | null;
   series: string;
+  source_ref: string;
   source_url: string;
+  /** "market" (World Bank monthly average) or "official" (US statutory or Treasury price, not a market average). */
+  price_basis: "market" | "official";
+  note?: string;
   aud_basis: string | null;
   fx_usd_per_aud: number | null;
   fx_date: string | null;
@@ -75,15 +79,61 @@ export interface PriceResult {
   sources: string[];
 }
 
+/**
+ * Before the World Bank monthly series (1960), most Queensland workings had already closed. For those years the
+ * clean, citable figure is the official US gold price. Per Federal Reserve History ("Gold Reserve Act of 1934"):
+ * $20.67 per ounce, "the value set by the Gold Act of 1900", which "had prevailed until the spring of 1933"; then
+ * $35 per ounce under the Gold Reserve Act (30 January 1934) and Proclamation 2072 (31 January 1934). Earlier
+ * months are not held: the cited source does not cover them. These are official prices, not market averages, and
+ * are labelled as such. Australia used the pound until 1966, so there is no A$ figure.
+ */
+export const OFFICIAL_SERIES = {
+  ref: "US-OFFICIAL-GOLD-PRICE",
+  title: "Official US gold price (Gold Act of 1900: $20.67/oz; Gold Reserve Act of 1934 and Proclamation 2072: $35/oz from 31 January 1934), per Federal Reserve History",
+  url: "https://www.federalreservehistory.org/essays/gold-reserve-act",
+  first: "1900-03",
+};
+
+export function officialPrice(month: string): { usd: number; note?: string } | null {
+  if (index(month) < index(OFFICIAL_SERIES.first)) return null;
+  if (index(month) <= index("1934-01")) {
+    if (month === "1934-01") return { usd: 20.67, note: "the official price became $35.00 on 31 January 1934" };
+    if (index(month) >= index("1933-04")) {
+      return { usd: 20.67, note: "statutory price; the dollar was off gold from April 1933 and US government purchase prices rose above it before the Gold Reserve Act" };
+    }
+    return { usd: 20.67 };
+  }
+  return { usd: 35 };
+}
+
 export function lookupPrices(gold: GoldMonths, span: { from: string; to: string }): PriceResult {
   const rows: PriceRow[] = [];
   const missing: string[] = [];
   const missingAud: string[] = [];
+  const official: string[] = [];
   for (let i = index(span.from); i <= index(span.to); i++) {
     const m = fromIndex(i);
     const v = gold.months.get(m);
     if (!v) {
-      missing.push(m);
+      const o = index(m) < index(gold.first) ? officialPrice(m) : null;
+      if (!o) {
+        missing.push(m);
+        continue;
+      }
+      official.push(m);
+      rows.push({
+        month: m,
+        usd_per_oz: o.usd,
+        aud_per_oz: null,
+        series: OFFICIAL_SERIES.title,
+        source_ref: OFFICIAL_SERIES.ref,
+        source_url: OFFICIAL_SERIES.url,
+        price_basis: "official",
+        ...(o.note ? { note: o.note } : {}),
+        aud_basis: null,
+        fx_usd_per_aud: null,
+        fx_date: null,
+      });
       continue;
     }
     const aud = v.fx ? Math.round((v.usd / v.fx) * 100) / 100 : null;
@@ -93,7 +143,9 @@ export function lookupPrices(gold: GoldMonths, span: { from: string; to: string 
       usd_per_oz: v.usd,
       aud_per_oz: aud,
       series: gold.gold.series,
+      source_ref: "WB-PINKSHEET-GOLD",
       source_url: gold.gold.url,
+      price_basis: "market",
       aud_basis: aud === null ? null : `derived: usd_per_oz divided by ${gold.fx.series}`,
       fx_usd_per_aud: v.fx,
       fx_date: v.fx_date,
@@ -101,9 +153,13 @@ export function lookupPrices(gold: GoldMonths, span: { from: string; to: string 
   }
   const notFound: string[] = [];
   const range = (list: string[]) => (list.length > 1 ? `${list[0]} to ${list.at(-1)} (${list.length} months)` : list[0]!);
-  if (missing.length) notFound.push(`gold_price usd_per_oz for ${range(missing)}: the open series covers ${gold.first} to ${gold.last}`);
+  if (missing.length) notFound.push(`gold_price usd_per_oz for ${range(missing)}: held from ${OFFICIAL_SERIES.first} (official US price) and ${gold.first} to ${gold.last} (World Bank monthly average)`);
   if (missingAud.length) notFound.push(`gold_price aud_per_oz for ${range(missingAud)}: no RBA AUD/USD observation for the month`);
-  return { rows, not_found: notFound, sources: rows.length ? [gold.gold.url, gold.fx.url] : [] };
+  if (official.length) notFound.push(`gold_price aud_per_oz for ${range(official)}: Australia used the pound until 1966; no A$ figure before the World Bank series`);
+  const sources = new Set<string>();
+  if (official.length) sources.add(OFFICIAL_SERIES.url);
+  if (rows.length > official.length) [gold.gold.url, gold.fx.url].forEach((u) => sources.add(u));
+  return { rows, not_found: notFound, sources: [...sources] };
 }
 
 export function describePrices(r: PriceResult, span: { from: string; to: string }): { answer: string; brief: string } {
@@ -115,11 +171,22 @@ export function describePrices(r: PriceResult, span: { from: string; to: string 
   }
   const fmt = (x: PriceRow) => `${x.month} US$${x.usd_per_oz}${x.aud_per_oz === null ? "" : ` / A$${x.aud_per_oz}`}`;
   const list = r.rows.length <= 12 ? r.rows.map(fmt).join("; ") : `${fmt(r.rows[0]!)}; ... ; ${fmt(r.rows.at(-1)!)} (${r.rows.length} months, all in gold_price)`;
+  const hasOfficial = r.rows.some((x) => x.price_basis === "official");
+  const hasMarket = r.rows.some((x) => x.price_basis === "market");
+  const notes = [...new Set(r.rows.map((x) => x.note).filter(Boolean))];
   const answer =
-    `Gold, monthly average per troy ounce (World Bank Pink Sheet, nominal US dollars): ${list}. ` +
-    `Australian dollar figures are derived by dividing by the RBA month-end A$1=US$ rate for the same month (a different day-basis from the World Bank average, so they are indicative, not an official A$ price).` +
-    (r.not_found.length ? ` Not found: ${r.not_found.join(" ")}` : "");
+    (hasOfficial
+      ? `Gold, official US price per ounce (not a market average): ${hasMarket ? "before 1960; " : ""}$20.67, the value set by the Gold Act of 1900, until the Gold Reserve Act of 1934, then $35 from 31 January 1934 (Proclamation 2072) (source: Federal Reserve History, ${OFFICIAL_SERIES.url}). `
+      : "") +
+    (hasMarket ? `Gold, monthly average per troy ounce (World Bank Pink Sheet, nominal US dollars) from 1960. ` : "") +
+    `Prices: ${list}. ` +
+    (hasMarket
+      ? `Australian dollar figures are derived by dividing by the RBA month-end A$1=US$ rate for the same month (a different day-basis from the World Bank average, so they are indicative, not an official A$ price). `
+      : "") +
+    (notes.length ? `Note: ${notes.join("; ")}. ` : "") +
+    (r.not_found.length ? `Not found: ${r.not_found.join(" ")}` : "");
   const first = r.rows[0]!;
-  const brief = r.rows.length === 1 ? `Gold ${first.month}: US$${first.usd_per_oz}/oz` : `Gold ${first.month} to ${r.rows.at(-1)!.month}: US$${first.usd_per_oz} to ${r.rows.at(-1)!.usd_per_oz}/oz`;
+  const tag = hasOfficial && !hasMarket ? " (official US)" : "";
+  const brief = r.rows.length === 1 ? `Gold ${first.month}: US$${first.usd_per_oz}/oz${tag}` : `Gold ${first.month} to ${r.rows.at(-1)!.month}: US$${first.usd_per_oz} to ${r.rows.at(-1)!.usd_per_oz}/oz${tag}`;
   return { answer, brief: brief.slice(0, 80) };
 }
