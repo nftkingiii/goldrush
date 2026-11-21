@@ -71,7 +71,7 @@ export function buildSiteIndex(sites: Site[]): SiteIndex {
 }
 
 export type Resolution =
-  | { kind: "found"; site: Site; others: Site[]; matchedBy: "site_id" | "name" }
+  | { kind: "found"; site: Site; others: Site[]; matchedBy: "site_no" | "name" }
   | { kind: "ambiguous"; candidates: Site[] }
   | { kind: "elsewhere"; candidates: Site[]; asked: string[] }
   | { kind: "none"; closest: string[] };
@@ -82,7 +82,7 @@ export function resolveSite(question: string, index: SiteIndex): Resolution {
   const idMatch = question.match(ID_PATTERN);
   if (idMatch) {
     const site = index.byNo.get(Number(idMatch[1]));
-    if (site) return { kind: "found", site, others: [], matchedBy: "site_id" };
+    if (site) return { kind: "found", site, others: [], matchedBy: "site_no" };
     return { kind: "none", closest: [] };
   }
 

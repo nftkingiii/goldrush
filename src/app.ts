@@ -52,8 +52,8 @@ export function createHandler(store: Store) {
   function site(question: string): Reply {
     const r = resolveSite(question, store.sites);
     if (r.kind === "none") return { status: 422, body: { error: "no_matching_site", closest_names: r.closest, hint: "Name a Queensland gold working as the Geological Survey records it, or give 'site <number>'." } };
-    if (r.kind === "elsewhere") return { status: 422, body: { error: "site_not_in_named_area", asked_areas: r.asked, candidates: r.candidates.map((c: Site) => ({ site_id: c.site_no, name: c.name, map_sheet_100k: c.sheet, size_band: c.size })), hint: "A site of that name exists, but not on the map sheet you named. Repeat with 'site <number>' to choose one." } };
-    if (r.kind === "ambiguous") return { status: 422, body: { error: "ambiguous_site", candidates: r.candidates.map((c: Site) => ({ site_id: c.site_no, name: c.name, map_sheet_100k: c.sheet, size_band: c.size })), hint: "Repeat the question with 'site <number>'." } };
+    if (r.kind === "elsewhere") return { status: 422, body: { error: "site_not_in_named_area", asked_areas: r.asked, candidates: r.candidates.map((c: Site) => ({ site_no: c.site_no, name: c.name, map_sheet_100k: c.sheet, size_band: c.size })), hint: "A site of that name exists, but not on the map sheet you named. Repeat with 'site <number>' to choose one." } };
+    if (r.kind === "ambiguous") return { status: 422, body: { error: "ambiguous_site", candidates: r.candidates.map((c: Site) => ({ site_no: c.site_no, name: c.name, map_sheet_100k: c.sheet, size_band: c.size })), hint: "Repeat the question with 'site <number>'." } };
     const a = buildSiteAnswer(store, r.site, r.others, r.matchedBy);
     return { status: 200, body: { answer: a.answer, source_count: a.sources.length, sources: a.sources, brief: a.brief, ...a.body } };
   }

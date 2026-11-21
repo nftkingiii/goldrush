@@ -13,7 +13,7 @@ const APP_QUESTION = "Tell me about the Mount Morgan gold mine, Queensland: who 
 test("Mount Morgan: answers the app's own question with GSQ id, production, closure, owners, each sourced", () => {
   const { status, body } = ask(APP_QUESTION) as { status: number; body: Body };
   assert.equal(status, 200);
-  assert.equal(body.site_id, 494270);
+  assert.equal(body.site_no, 494270);
   assert.equal(body.site_name, "Mount Morgan");
   assert.equal(body.gsq_record.size_band, "GIANT");
   assert.ok(body.production.length >= 3);
@@ -24,14 +24,15 @@ test("Mount Morgan: answers the app's own question with GSQ id, production, clos
   }
   assert.equal(body.source_count, body.sources.length);
   assert.ok(body.brief.length <= 80, `brief is ${body.brief.length} characters`);
-  assert.equal(body.other_sites_with_same_name[0].site_id, 479252, "the Croydon site of the same name is disclosed, not silently picked");
+  assert.equal(body.other_sites_with_same_name[0].site_no, 479252, "the Croydon site of the same name is disclosed, not silently picked");
 });
 
 test("Mount Morgan: conflicting sources are both kept, in production and in closure, and not merged", () => {
   const { body } = ask("site 494270") as { body: Body };
-  const gold = body.production.filter((p: Body) => p.commodity === "gold").map((p: Body) => [p.amount, p.unit, p.source_ref]);
+  const curated = (p: Body) => !String(p.source_ref).startsWith("MINOCC");
+  const gold = body.production.filter((p: Body) => p.commodity === "gold" && curated(p)).map((p: Body) => [p.amount, p.unit, p.source_ref]);
   assert.deepEqual(gold, [[250, "t", "QLDGOV-MM"], [262, "t", "WP-MM"]]);
-  const years = body.closure.filter((c: Body) => c.entity === "Mount Morgan mine").map((c: Body) => [c.year, c.reason_class]);
+  const years = body.closure.filter((c: Body) => c.entity === "Mount Morgan mine").map((c: Body) => [c.year, c.reason_class]); // MINOCC's entity is "Mount Morgan", a separate record
   assert.deepEqual(years, [[1990, "unknown"], [1981, "exhausted"]]);
   const fields = body.conflicts.map((c: Body) => c.field);
   assert.ok(fields.includes("production gold (Mount Morgan mine)"));
@@ -56,32 +57,32 @@ test("Mount Morgan: current company comes from Geoscience Australia with its own
 test("Charters Towers lode: Day Dawn lode keeps each mine's figure separately and flags the in-source tonnage mismatch", () => {
   const { status, body } = ask("What did the Day Dawn lode at Charters Towers produce and when did it close?") as { status: number; body: Body };
   assert.equal(status, 200);
-  assert.equal(body.site_id, 38730);
-  const gold = body.production.filter((p: Body) => p.commodity === "gold").map((p: Body) => [p.entity.split(" (")[0], p.amount, p.unit]);
+  assert.equal(body.site_no, 38730);
+  const gold = body.production.filter((p: Body) => p.commodity === "gold" && !String(p.source_ref).startsWith("MINOCC")).map((p: Body) => [p.entity.split(" (")[0], p.amount, p.unit]);
   assert.deepEqual(gold, [["Day Dawn P.C.", 379859, "oz"], ["Day Dawn P.C.", 120722, "oz"], ["Day Dawn Block and Wyndham", 546531, "oz"]]);
-  assert.deepEqual(body.production.filter((p: Body) => p.commodity === "ore").map((p: Body) => p.amount), [279543, 76334]);
+  assert.deepEqual(body.production.filter((p: Body) => p.commodity === "ore" && !String(p.source_ref).startsWith("MINOCC")).map((p: Body) => p.amount), [279543, 76334]);
   assert.deepEqual(body.conflicts.map((c: Body) => c.field), ["production ore (Day Dawn P.C. (on the Day Dawn lode))"]);
   assert.equal(body.closure[0].year, 1913);
   assert.equal(body.closure[0].reason_class, "unknown");
   assert.match(body.closure[0].reason_text, /returns grew less/);
+  assert.ok(body.closure.length >= 2 && body.closure.at(-1).source_ref.startsWith("MINOCC"), "MINOCC adds its own closure record after the curated one");
 });
 
 test("Charters Towers lode: Brilliant lode answers from its own records", () => {
   const { body } = ask("Brilliant Lode Charters Towers") as { body: Body };
-  assert.equal(body.site_id, 38722);
+  assert.equal(body.site_no, 38722);
   assert.equal(body.production[0].amount, 22843);
   assert.equal(body.closure[0].year, 1917);
 });
 
-test("a site with no production record reports not_found and invents nothing", () => {
-  const { status, body } = ask("Tell me about Sunburst Lode, Charters Towers: production, owners, closure") as { status: number; body: Body };
+test("a site that no source covers reports not_found for all three and invents nothing", () => {
+  const { status, body } = ask("site 610384") as { status: number; body: Body };
   assert.equal(status, 200);
-  assert.equal(body.site_id, 38776);
+  assert.equal(body.site_no, 610384);
   assert.deepEqual([body.production, body.closure, body.ownership], [[], [], []]);
   assert.equal(body.not_found.length, 3);
   assert.match(body.not_found[0], /^production/);
   assert.match(body.answer, /Not found/);
-  assert.equal(body.gsq_record.size_band, "SMALL");
 });
 
 test("an unknown site gets 422 with closest real names, not an invented answer", () => {
@@ -98,13 +99,13 @@ test("a name that exists only on another map sheet than the one asked about is n
   assert.equal(status, 422);
   assert.equal(body.error, "site_not_in_named_area");
   assert.deepEqual(body.asked_areas, ["CHARTERS TOWERS"]);
-  assert.equal(body.candidates[0].site_id, 504677);
+  assert.equal(body.candidates[0].site_no, 504677);
 });
 
 test("a site name plus the map sheet it is on picks the site on that sheet and discloses the others", () => {
   const { status, body } = ask("Tell me about the Sunburst gold mine near Gympie") as { status: number; body: Body };
   assert.equal(status, 200);
-  assert.equal(body.site_id, 40216);
+  assert.equal(body.site_no, 40216);
   assert.equal(body.gsq_record.map_sheet_100k, "GYMPIE");
   assert.ok(body.other_sites_with_same_name.length >= 1);
 });
@@ -117,7 +118,7 @@ test("two sites with the same name and size are not guessed between", () => {
   const { status, body } = ask("Silver Queen gold mine") as { status: number; body: Body };
   assert.equal(status, 422);
   assert.equal(body.error, "ambiguous_site");
-  assert.deepEqual(body.candidates.map((c: Body) => c.site_id).sort(), [36745, 481748]);
+  assert.deepEqual(body.candidates.map((c: Body) => c.site_no).sort(), [36745, 481748]);
 });
 
 test("gold price for one month, in USD and AUD, with series and source", () => {

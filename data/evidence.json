@@ -45,11 +45,12 @@
       "amount": 250,
       "unit": "t",
       "qualifier": "about",
-      "period_from": "1882",
-      "period_to": "1990",
+      "period_from": 1882,
+      "period_to": 1990,
       "basis": "reported",
       "source_ref": "QLDGOV-MM",
-      "quote": "with about 250 tonnes of gold and 360,000 tonnes of copper extracted from the mine"
+      "quote": "with about 250 tonnes of gold and 360,000 tonnes of copper extracted from the mine",
+      "scope": "site_total"
     },
     {
       "id": "mm-prod-qldgov-cu",
@@ -60,11 +61,12 @@
       "amount": 360000,
       "unit": "t",
       "qualifier": "about",
-      "period_from": "1882",
-      "period_to": "1990",
+      "period_from": 1882,
+      "period_to": 1990,
       "basis": "reported",
       "source_ref": "QLDGOV-MM",
-      "quote": "with about 250 tonnes of gold and 360,000 tonnes of copper extracted from the mine"
+      "quote": "with about 250 tonnes of gold and 360,000 tonnes of copper extracted from the mine",
+      "scope": "site_total"
     },
     {
       "id": "mm-prod-wp-au",
@@ -75,11 +77,12 @@
       "amount": 262,
       "unit": "t",
       "qualifier": "approximately",
-      "period_from": "1882",
-      "period_to": "1981",
+      "period_from": 1882,
+      "period_to": 1981,
       "basis": "reported",
       "source_ref": "WP-MM",
-      "quote": "the mine yielded approximately 262 metric tons"
+      "quote": "the mine yielded approximately 262 metric tons",
+      "scope": "site_total"
     },
     {
       "id": "mm-prod-wp-ag",
@@ -90,11 +93,12 @@
       "amount": 37,
       "unit": "t",
       "qualifier": "approximately",
-      "period_from": "1882",
-      "period_to": "1981",
+      "period_from": 1882,
+      "period_to": 1981,
       "basis": "reported",
       "source_ref": "WP-MM",
-      "quote": "37 metric tons (36 long tons; 41 short tons) of silver"
+      "quote": "37 metric tons (36 long tons; 41 short tons) of silver",
+      "scope": "site_total"
     },
     {
       "id": "mm-prod-wp-cu",
@@ -105,11 +109,12 @@
       "amount": 387000,
       "unit": "t",
       "qualifier": "approximately",
-      "period_from": "1882",
-      "period_to": "1981",
+      "period_from": 1882,
+      "period_to": 1981,
       "basis": "reported",
       "source_ref": "WP-MM",
-      "quote": "387,000 metric tons (381,000 long tons; 427,000 short tons) of copper"
+      "quote": "387,000 metric tons (381,000 long tons; 427,000 short tons) of copper",
+      "scope": "site_total"
     },
     {
       "id": "mm-close-qldgov-1990",
@@ -121,7 +126,8 @@
       "reason_class": "unknown",
       "source_ref": "QLDGOV-MM",
       "page": null,
-      "quote": "with its mining operations continuing until November 1990"
+      "quote": "with its mining operations continuing until November 1990",
+      "scope": "site"
     },
     {
       "id": "mm-close-wp-1981",
@@ -133,7 +139,8 @@
       "reason_class": "exhausted",
       "source_ref": "WP-MM",
       "page": null,
-      "quote": "until it reached the end of its ore body in 1981"
+      "quote": "until it reached the end of its ore body in 1981",
+      "scope": "site"
     },
     {
       "id": "mm-close-wp-1927",
@@ -154,8 +161,8 @@
       "entity": "Mount Morgan mine",
       "owner": "Mount Morgan Gold Mining Company Limited",
       "role": "operator",
-      "period_from": "1886",
-      "period_to": "1928",
+      "period_from": 1886,
+      "period_to": 1928,
       "source_ref": "WP-MM",
       "quote": "In October 1886, the syndicate became the Mount Morgan Gold Mining Company Limited"
     },
@@ -166,8 +173,8 @@
       "entity": "Mount Morgan mine",
       "owner": "Mount Morgan Limited",
       "role": "operator",
-      "period_from": "1928",
-      "period_to": "1990",
+      "period_from": 1928,
+      "period_to": 1990,
       "source_ref": "WP-MM",
       "quote": "operating as Mount Morgan Limited"
     },
@@ -178,7 +185,7 @@
       "entity": "Mount Morgan mine",
       "owner": "Peko-Wallsend (parent of Mount Morgan Limited)",
       "role": "parent company",
-      "period_from": "1968",
+      "period_from": 1968,
       "period_to": null,
       "source_ref": "WP-MM",
       "quote": "Mount Morgan Limited became a subsidiary of Peko-Wallsend in 1968"
@@ -190,7 +197,7 @@
       "entity": "Mount Morgan mine",
       "owner": "Norton Gold Fields",
       "role": "lease holder",
-      "period_from": "2007",
+      "period_from": 2007,
       "period_to": null,
       "source_ref": "WP-MM",
       "quote": "Since 2007 the mine and mining leases have been owned by Norton Gold Fields"
@@ -202,7 +209,7 @@
       "entity": "Mount Morgan mine",
       "owner": "Queensland Government (legacy site management)",
       "role": "site manager",
-      "period_from": "1993",
+      "period_from": 1993,
       "period_to": null,
       "source_ref": "QLDGOV-MM",
       "quote": "We subsequently took over management of the legacy issues at the mine in January 1993"
@@ -214,7 +221,7 @@
       "entity": "Mount Morgan mine",
       "owner": "Heritage Minerals Pty Ltd",
       "role": "mining lease holder (transfer of mining leases in 2020)",
-      "period_from": "2020",
+      "period_from": 2020,
       "period_to": null,
       "source_ref": "QLDGOV-MM",
       "quote": "as part of the transfer of mining leases to Heritage Minerals in 2020"
@@ -228,8 +235,8 @@
       "amount": 379859,
       "unit": "oz",
       "qualifier": null,
-      "period_from": "1881",
-      "period_to": "1913",
+      "period_from": 1881,
+      "period_to": 1913,
       "basis": "reported",
       "source_ref": "WP-DAYDAWN",
       "quote": "for a return of 379,859 ounces"
@@ -243,8 +250,8 @@
       "amount": 120722,
       "unit": "oz",
       "qualifier": null,
-      "period_from": "1887",
-      "period_to": "1891",
+      "period_from": 1887,
+      "period_to": 1891,
       "basis": "reported",
       "source_ref": "WP-DAYDAWN",
       "quote": "Returns for the first five years (1887 to 1891) were 120,722 ounces"
@@ -273,8 +280,8 @@
       "amount": 76334,
       "unit": "t",
       "qualifier": null,
-      "period_from": "1881",
-      "period_to": "1913",
+      "period_from": 1881,
+      "period_to": 1913,
       "basis": "reported",
       "source_ref": "WP-DAYDAWN",
       "quote": "75,128 long tons (76,334 t) of ore raised"
@@ -288,8 +295,8 @@
       "amount": 546531,
       "unit": "oz",
       "qualifier": null,
-      "period_from": "1883",
-      "period_to": "1912",
+      "period_from": 1883,
+      "period_to": 1912,
       "basis": "reported",
       "source_ref": "WP-CTSHAFTS",
       "quote": "589,531 long tons (598,991 t) of ore was raised for 546,531 ounces"
@@ -313,7 +320,7 @@
       "entity": "Day Dawn P.C.",
       "owner": "Day Dawn P. C. Gold Mining Company (English company)",
       "role": "owner",
-      "period_from": "1887",
+      "period_from": 1887,
       "period_to": null,
       "source_ref": "WP-DAYDAWN",
       "quote": "In June 1887 the mine was sold to an English company for"
@@ -325,7 +332,7 @@
       "entity": "Day Dawn Block and Wyndham",
       "owner": "Day Dawn Block and Wyndham Company",
       "role": "operator",
-      "period_from": "1882",
+      "period_from": 1882,
       "period_to": null,
       "source_ref": "WP-CTSHAFTS",
       "quote": "the Day Dawn Block and Wyndham Company was formed in 1882"
@@ -339,8 +346,8 @@
       "amount": 22843,
       "unit": "oz",
       "qualifier": null,
-      "period_from": "1908",
-      "period_to": "1916",
+      "period_from": 1908,
+      "period_to": 1916,
       "basis": "reported",
       "source_ref": "WP-CTSHAFTS",
       "quote": "From 1908 to 1916, 22,843 ounces"
@@ -364,8 +371,8 @@
       "entity": "Brilliant Deeps",
       "owner": "Brilliant Deep Levels Gold Mining Company",
       "role": "operator",
-      "period_from": "1896",
-      "period_to": "1907",
+      "period_from": 1896,
+      "period_to": 1907,
       "source_ref": "WP-CTSHAFTS",
       "quote": "the company was reconstituted in 1896 as the Brilliant Deep Levels Gold Mining Company"
     }

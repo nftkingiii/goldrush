@@ -10,9 +10,11 @@ description: >
   Queensland historical gold mines, geology and mining history: reported production, closure year with the
   reason quoted from the source, and ownership or tenure history, for a gold working named as the Geological
   Survey of Queensland records it (or by its GSQ site number, the same key as the survey's MINOCC record).
-  Every figure carries its source and a quoted passage. Different sources keep their own values and are never
-  merged or estimated; anything no source gives is listed under not_found. Complements the survey's own record,
-  which holds location and size band but not production, closure or owners.
+  Draws on the survey's full MINOCC 2017 database (production totals and dated rows in the unit recorded, years
+  worked, tenure holders, company report numbers) beside curated Queensland Government and Heritage Register
+  text and Geoscience Australia company data. Every figure carries its source and a quoted passage. Different
+  sources keep their own values and are never merged or estimated; disagreements are listed as conflicts, and
+  anything no source gives is listed under not_found. A closure reason is given only where a source states it.
 base_url: https://goldrush-app.up.railway.app
 
 rate_limit_per_sec: 1
@@ -25,7 +27,7 @@ docs:
 
 limitations:
   - code: QUEENSLAND_GOLD_ONLY
-    message: Covers the 8,132 Queensland gold workings in the Geological Survey of Queensland MINOCC record. Production, closure and ownership are held only for sites with a cited source; for the rest the answer says not_found.
+    message: Covers the 8,132 Queensland gold workings in the Geological Survey of Queensland MINOCC record. Of those, about 2,590 have a production figure, 2,450 a whole-site gold total, 2,450 years worked and 2,050 a tenure holder or company in MINOCC 2017 (a 2017 release); for the rest the answer says not_found.
   - code: MAX_PARAM_LENGTH
     message: question must be at most 256 characters
     param: question
@@ -39,9 +41,10 @@ endpoints:
     method: GET
     description: >
       RESEARCH_QUERY_GENERAL about one Queensland historical gold mine or lode. Answers "how much gold did
-      Mount Morgan produce, when and why did it close, who owned it" with production figures (amount, unit,
-      period, source), closure year and quoted reason, owners and tenure, the survey's site number, status,
-      location and size band, conflicts between sources, and a not_found list. Also returns monthly gold prices
+      Mount Morgan produce, when and why did it close, who owned it" with production figures (amount, unit as recorded,
+      period as integer years, source and record), closure year and quoted reason, years worked, owners and tenure, the
+      survey's site number (site_no), status, location and size band, conflicts between sources, and a not_found list.
+      The structured fields are top-level keys of the response next to answer and sources. Also returns monthly gold prices
       when the question asks for the price of gold in a month or year.
     intents: [RESEARCH_QUERY_GENERAL]
     params:

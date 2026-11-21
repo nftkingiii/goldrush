@@ -2,3 +2,5 @@ node_modules/
 data/raw/minocc-gold.json
 *.log
 *.pid
+data/raw/qmin-zip/
+data/raw/qmin-csv/

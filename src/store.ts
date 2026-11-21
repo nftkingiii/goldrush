@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { expandSite, sourceKey, type SiteData } from "./minocc.ts";
 import { buildSiteIndex, normalizeName, type Site, type SiteIndex } from "./match.ts";
 
 export interface Source {
@@ -8,6 +9,7 @@ export interface Source {
   licence: string;
   retrieved: string;
   fixture?: string;
+  file_sha256?: string | null;
 }
 
 interface RecordBase {
@@ -16,16 +18,20 @@ interface RecordBase {
   entity: string;
   source_ref: string;
   quote: string;
+  /** "site_total" / "site": the record describes the whole GSQ site, so records of different sources can be compared. "period": one dated row of a source. */
+  scope?: "site_total" | "site" | "period";
 }
 export interface ProductionRecord extends RecordBase {
   kind: "production";
   commodity: string;
   amount: number;
-  unit: "oz" | "t";
+  unit: "oz" | "t" | "kg";
   qualifier: string | null;
-  period_from: string | null;
-  period_to: string | null;
+  period_from: number | null;
+  period_to: number | null;
   basis: "reported" | "estimated";
+  /** MINOCC only */
+  commodity_code?: string; form?: string | null; grade?: string | null; ore_class?: string; ore_recorded?: string | null; comment?: string | null;
 }
 export interface ClosureRecord extends RecordBase {
   kind: "closure";
@@ -33,15 +39,27 @@ export interface ClosureRecord extends RecordBase {
   reason_text: string | null;
   reason_class: "exhausted" | "flooding" | "economic" | "legal" | "unknown";
   page: string | null;
+  basis_note?: string;
+  comment?: string | null;
 }
 export interface OwnershipRecord extends RecordBase {
   kind: "ownership";
   owner: string;
   role: string;
-  period_from: string | null;
-  period_to: string | null;
+  period_from: number | null;
+  period_to: number | null;
+  tenures?: { type: string; number: number | null }[];
+  comment?: string | null;
 }
-export type EvidenceRecord = ProductionRecord | ClosureRecord | OwnershipRecord;
+export interface YearsWorkedRecord extends RecordBase {
+  kind: "years_worked";
+  periods: { seq: number; start_year: number | null; end_year: number | null; comment: string | null; mine_life_flag: string | null }[];
+}
+export interface ReferenceRecord extends RecordBase {
+  kind: "reference";
+  cr_numbers: number[];
+}
+export type EvidenceRecord = ProductionRecord | ClosureRecord | OwnershipRecord | YearsWorkedRecord | ReferenceRecord;
 
 export interface GaRow {
   eno: number;
@@ -57,6 +75,7 @@ export interface Store {
   sites: SiteIndex;
   ga: Map<number, GaRow>;
   sources: Record<string, Source>;
+  minocc: { source: Source; coverage: Record<string, number>; join: Record<string, unknown> };
   records: Map<number, EvidenceRecord[]>;
   gold: GoldMonths;
 }
@@ -86,13 +105,25 @@ export function loadStore(dir = new URL("../data/", import.meta.url)): Store {
   const ev = read("evidence.json");
   const records = new Map<number, EvidenceRecord[]>();
   for (const r of ev.records as EvidenceRecord[]) {
-    if (!ev.sources[r.source_ref]) throw new Error(`evidence ${r.id} cites unknown source ${r.source_ref}`);
+    if (!ev.sources[sourceKey(r.source_ref)]) throw new Error(`evidence ${r.id} cites unknown source ${r.source_ref}`);
     if (!r.quote) throw new Error(`evidence ${r.id} has no quote`);
     if (r.kind === "closure" && !REASON_CLASSES.has(r.reason_class)) throw new Error(`evidence ${r.id} has bad reason_class`);
     if (r.kind === "production" && r.unit !== "oz" && r.unit !== "t") throw new Error(`evidence ${r.id} has bad unit`);
     const list = records.get(r.site_no) ?? [];
     list.push(r);
     records.set(r.site_no, list);
+  }
+  // MINOCC 2017: derived per-site data, expanded into records of the same shapes. Kept as its own source; never merged with the curated ones.
+  const mo = read("minocc.json");
+  const sources: Record<string, Source> = { ...ev.sources, [mo.source.key]: mo.source };
+  for (const [no, d] of Object.entries(mo.sites as Record<string, SiteData>)) {
+    for (const r of expandSite(Number(no), d) as unknown as EvidenceRecord[]) {
+      if (!sources[sourceKey(r.source_ref)] || !r.quote) throw new Error(`minocc ${r.id} lacks a source or quote`);
+      if (r.kind === "production" && !["oz", "t", "kg"].includes(r.unit)) throw new Error(`minocc ${r.id} has bad unit`);
+      const list = records.get(r.site_no) ?? [];
+      list.push(r);
+      records.set(r.site_no, list);
+    }
   }
   const siteIndex = buildSiteIndex(sites);
   for (const siteNo of records.keys()) if (!siteIndex.byNo.has(siteNo)) throw new Error(`evidence for unknown GSQ site ${siteNo}`);
@@ -105,7 +136,8 @@ export function loadStore(dir = new URL("../data/", import.meta.url)): Store {
     datasets: idx.datasets,
     sites: siteIndex,
     ga,
-    sources: ev.sources,
+    sources,
+    minocc: { source: mo.source, coverage: mo.coverage, join: mo.join },
     records,
     gold: { gold: g.gold, fx: g.fx, months, first: g.months[0].m, last: g.months.at(-1).m },
   };
