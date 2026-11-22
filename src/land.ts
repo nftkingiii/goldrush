@@ -29,19 +29,26 @@ export interface LayerSpec {
 }
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() && v.trim() !== "n/a" ? v.trim() : null);
-/** ArcGIS dates are epoch milliseconds. */
+/** ArcGIS dates are epoch milliseconds. NNTT stores dates at UTC midnight, so the UTC calendar date is the date. */
 export const day = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? new Date(v).toISOString().slice(0, 10) : null);
+/**
+ * Queensland Government services store a date as midnight in Brisbane (UTC+10, no daylight saving), e.g. ML 5623's expiry
+ * 1756562400000 = 2025-08-30T14:00Z = 31 Aug 2025 in Brisbane. Shift by 10 h before taking the calendar date. A value already at
+ * UTC midnight stays on the same day.
+ */
+export const qldDay = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? new Date(v + 10 * 3600_000).toISOString().slice(0, 10) : null);
 const num = (v: unknown) => (typeof v === "number" ? v : null);
 
 const RES = `${QLD}/Economy/CurrentQldResourceAuthorities/MapServer`;
-const tenure = (layer: number, name: string): LayerSpec => ({
-  category: "tenure", record_type: "tenure", source_ref: `QLD-RESAUTH-L${layer}`, service: RES, layer, name, oid: "objectid",
-  fields: ["objectid", "displayname", "permittype", "permitsubtype", "permitstatus", "permitstate", "approvedate", "expirydate", "authorisedholdername", "permitname", "permitid", "permittypeabbreviation", "permitminerals", "nativetitlecategory"],
+const tenure = (layer: number, name: string, access = false): LayerSpec => ({
+  category: "tenure", record_type: access ? "tenure_access_area" : "tenure", source_ref: `QLD-RESAUTH-L${layer}`, service: RES, layer, name, oid: "objectid",
+  fields: ["objectid", "displayname", "permittype", ...(access ? [] : ["permitsubtype"]), "permitstatus", "permitstate", "approvedate", "expirydate", "authorisedholdername", "permitname", "permitid", "permittypeabbreviation", "permitminerals", "nativetitlecategory"],
   id: (a) => `${str(a.displayname) ?? "?"} (permitid ${a.permitid})`,
   map: (a) => ({
-    tenure_id: str(a.displayname), tenure_type: str(a.permittypeabbreviation), tenure_type_name: str(a.permittype), subtype: str(a.permitsubtype),
+    tenure_id: str(a.displayname), tenure_type: str(a.permittypeabbreviation), tenure_type_name: str(a.permittype), subtype: access ? null : str(a.permitsubtype),
     holders: str(a.authorisedholdername) ? [str(a.authorisedholdername)] : [], holder_basis: "authorised (principal) holder name as published",
-    status: str(a.permitstatus), sub_status: str(a.permitstate), grant_date: day(a.approvedate), expiry_date: day(a.expirydate),
+    status: str(a.permitstatus), sub_status: str(a.permitstate), grant_date: qldDay(a.approvedate), expiry_date: qldDay(a.expirydate),
+    ...(access ? { access_note: "access area: a mapped access route (line) attached to the permit, not the permit area itself" } : {}),
     permit_name: str(a.permitname), minerals: str(a.permitminerals), native_title_category: str(a.nativetitlecategory), permit_id: num(a.permitid),
   }),
 });
@@ -60,6 +67,9 @@ export const LAYERS: LayerSpec[] = [
   tenure(100, "Mining claim (MC)"),
   tenure(120, "Mining lease (ML)"),
   tenure(140, "Mining lease surface area"),
+  tenure(90, "Mineral development licence access", true),
+  tenure(110, "Mining claim access", true),
+  tenure(130, "Mining lease access", true),
   {
     category: "native_title", record_type: "determination_outcome", source_ref: "NNTT-DETERMINATION-OUTCOMES", service: NNTT, layer: 5, name: "Native Title Determination Outcomes",
     oid: "OBJECTID", fields: ["OBJECTID", "Tribunal_ID", "Name", "FC_No", "FC_Name", "Determination_Date", "Determined_Method", "Determination_Type", "Determined_Outcome", "RNTBC_Name", "Area_Sqkm", "Date_Currency", "Date_extracted"],
@@ -93,13 +103,13 @@ export const LAYERS: LayerSpec[] = [
     category: "land_status", record_type: "protected_area", source_ref: "QLD-PROTECTED-AREAS", service: `${QLD}/Environment/ParksTerrestrialProtectedAreas/MapServer`, layer: 10,
     name: "Protected areas and forests of Queensland", oid: "objectid", fields: ["objectid", "sysintcode", "estatename", "esttype", "legislated", "gazareaha", "iucncode", "curgazdate"],
     id: (a) => `${a.sysintcode ?? a.objectid}`,
-    map: (a) => ({ name: str(a.estatename), estate_type: str(a.esttype), legislated: str(a.legislated), area_ha: num(a.gazareaha), iucn_code: str(a.iucncode), current_gazettal_date: day(a.curgazdate) }),
+    map: (a) => ({ name: str(a.estatename), estate_type: str(a.esttype), legislated: str(a.legislated), area_ha: num(a.gazareaha), iucn_code: str(a.iucncode), current_gazettal_date: qldDay(a.curgazdate) }),
   },
   {
     category: "land_status", record_type: "heritage_place", source_ref: "QLD-HERITAGE-REGISTER", service: `${QLD}/Environment/EnvironmentallySensitiveAreasCategoryB/MapServer`, layer: 270,
     name: "Queensland heritage register", oid: "objectid", fields: ["objectid", "place_id", "placename", "status", "entrydate", "accuracy"],
     id: (a) => `place_id ${a.place_id}`,
-    map: (a) => ({ name: str(a.placename), place_id: num(a.place_id), register_status: str(a.status), entry_date: day(a.entrydate), boundary_accuracy: str(a.accuracy) }),
+    map: (a) => ({ name: str(a.placename), place_id: num(a.place_id), register_status: str(a.status), entry_date: qldDay(a.entrydate), boundary_accuracy: str(a.accuracy) }),
   },
   abandoned(14, "abandoned_mine_program_site", "Abandoned mines: program sites", ["objectid", "program_site_id", "mine_name", "main_commodity", "class", "status"]),
   abandoned(85, "abandoned_mine_pit", "Abandoned mines: pit", AM_FIELDS),

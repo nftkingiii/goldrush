@@ -54,11 +54,11 @@ test("Mount Morgan tenure: the mining lease over the site point, its holder, dat
   assert.deepEqual(ml.holders, ["HERITAGE MINERALS PTY LTD"]);
   assert.equal(ml.status, "Granted");
   assert.equal(ml.sub_status, "Renewal Lodged");
-  assert.equal(ml.grant_date, "1974-05-15");
-  assert.equal(ml.expiry_date, "2025-08-30");
+  assert.equal(ml.grant_date, "1974-05-16", "Brisbane date: 1974-05-15T14:00Z is 16 May in Queensland");
+  assert.equal(ml.expiry_date, "2025-08-31", "Brisbane date: 1756562400000 = 2025-08-30T14:00Z = 31 Aug in Queensland");
   const epm = body.tenure.find((r: Body) => r.tenure_id === "EPM 17850");
   assert.equal(epm.relation, "within_buffer");
-  assert.equal(epm.expiry_date, "2027-04-14");
+  assert.equal(epm.expiry_date, "2027-04-15");
   for (const r of body.tenure) {
     assert.ok(r.source_ref && r.record_id && r.layer);
     assert.match(r.source_url, /^https:\/\/spatial-gis\.information\.qld\.gov\.au\/arcgis\/rest\/services\/.+\/query\?/);
