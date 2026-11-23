@@ -7,14 +7,14 @@ export const BUFFER_M = 2000;
 export const CACHE_TTL_MS = 24 * 3600 * 1000;
 export const QUERY_TIMEOUT_MS = 8000;
 
-const QLD = "https://spatial-gis.information.qld.gov.au/arcgis/rest/services";
+export const QLD = "https://spatial-gis.information.qld.gov.au/arcgis/rest/services";
 const NNTT = "https://services2.arcgis.com/rzk7fNEt0xoEp3cX/ArcGIS/rest/services/NNTT_Custodial_AGOL/FeatureServer";
 
 export type Category = "tenure" | "native_title" | "land_status";
-type Attrs = Record<string, unknown>;
+export type Attrs = Record<string, unknown>;
 
 export interface LayerSpec {
-  category: Category;
+  category: string;
   record_type: string;
   source_ref: string;
   service: string;
@@ -28,7 +28,7 @@ export interface LayerSpec {
   countOnly?: boolean;
 }
 
-const str = (v: unknown) => (typeof v === "string" && v.trim() && v.trim() !== "n/a" ? v.trim() : null);
+export const str = (v: unknown) => (typeof v === "string" && v.trim() && v.trim() !== "n/a" ? v.trim() : null);
 /** ArcGIS dates are epoch milliseconds. NNTT stores dates at UTC midnight, so the UTC calendar date is the date. */
 export const day = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? new Date(v).toISOString().slice(0, 10) : null);
 /**
@@ -37,7 +37,7 @@ export const day = (v: unknown) => (typeof v === "number" && Number.isFinite(v) 
  * UTC midnight stays on the same day.
  */
 export const qldDay = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? new Date(v + 10 * 3600_000).toISOString().slice(0, 10) : null);
-const num = (v: unknown) => (typeof v === "number" ? v : null);
+export const num = (v: unknown) => (typeof v === "number" ? v : null);
 
 const RES = `${QLD}/Economy/CurrentQldResourceAuthorities/MapServer`;
 const tenure = (layer: number, name: string, access = false): LayerSpec => ({
@@ -119,10 +119,10 @@ export const LAYERS: LayerSpec[] = [
 ];
 
 export interface LandRow extends Attrs {
-  category: Category;
+  category: string;
   record_type: string;
   record_id: string;
-  relation: "contains_site_point" | "within_buffer";
+  relation: string;
   layer: string;
   source_ref: string;
   source_url: string;
@@ -130,7 +130,7 @@ export interface LandRow extends Attrs {
 }
 
 export interface LayerCheck {
-  category: Category;
+  category: string;
   layer: string;
   source_ref: string;
   source_url: string;
@@ -171,9 +171,9 @@ export function queryUrl(spec: LayerSpec, site: Pick<Site, "lat" | "lon">, withB
   return `${spec.service}/${spec.layer}/query?${q}`;
 }
 
-type Hit = { features: { attributes: Attrs }[]; count: number; truncated: boolean };
+export type Hit = { features: { attributes: Attrs }[]; count: number; truncated: boolean };
 
-async function arcgis(deps: LandDeps, url: string): Promise<Hit | { error: string }> {
+export async function arcgis(deps: LandDeps, url: string): Promise<Hit | { error: string }> {
   const timeout = deps.timeoutMs ?? QUERY_TIMEOUT_MS;
   try {
     const res = await deps.fetch(url, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(timeout) });
@@ -189,7 +189,7 @@ async function arcgis(deps: LandDeps, url: string): Promise<Hit | { error: strin
   }
 }
 
-async function pool<T>(items: (() => Promise<T>)[], size: number): Promise<T[]> {
+export async function pool<T>(items: (() => Promise<T>)[], size: number): Promise<T[]> {
   const out: T[] = new Array(items.length);
   let next = 0;
   await Promise.all(
@@ -205,12 +205,12 @@ async function pool<T>(items: (() => Promise<T>)[], size: number): Promise<T[]> 
 
 export const MAX_ROWS_PER_LAYER = 25;
 
-interface LayerRun {
+export interface LayerRun {
   rows: LandRow[];
   check: LayerCheck;
 }
 
-async function checkLayer(spec: LayerSpec, site: Site, deps: LandDeps, at: string): Promise<LayerRun> {
+export async function checkLayer(spec: LayerSpec, site: Site, deps: LandDeps, at: string): Promise<LayerRun> {
   const near = queryUrl(spec, site, true);
   const point = queryUrl(spec, site, false);
   const [n, p] = await Promise.all([arcgis(deps, near), arcgis(deps, point)]);
@@ -249,7 +249,7 @@ export function createLand(deps: LandDeps) {
   }
   return {
     async query(site: Site, categories: Category[]): Promise<LandResult> {
-      const specs = LAYERS.filter((l) => categories.includes(l.category));
+      const specs = LAYERS.filter((l) => (categories as string[]).includes(l.category));
       const results = await pool(specs.map((s) => () => run(s, site)), 6);
       const rows: Record<Category, LandRow[]> = { tenure: [], native_title: [], land_status: [] };
       const checks: LayerCheck[] = [];
@@ -260,7 +260,7 @@ export function createLand(deps: LandDeps) {
         checks.push(check);
         if (check.error) notFound.push(`${spec.category}: ${spec.name} not checked (${check.error}); no value is given for it`);
         const shown = r.slice(0, MAX_ROWS_PER_LAYER);
-        rows[spec.category].push(...shown);
+        rows[spec.category as Category].push(...shown);
         if (r.length > shown.length) notes.push(`${spec.category}: ${spec.name} has ${r.length} records within ${BUFFER_M / 1000} km; the first ${shown.length} (those over the site point first) are listed`);
         if (check.truncated) notes.push(`${spec.category}: ${spec.name} hit the service's record limit; the list may be incomplete`);
       });

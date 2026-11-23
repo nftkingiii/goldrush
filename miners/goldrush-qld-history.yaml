@@ -21,6 +21,15 @@ description: >
   abandoned mines). Each record says whether it lies over the site point or within 2 km, and carries its source,
   query URL, record id and the time it was checked. An expiry date, or the absence of a tenure, does not show that
   ground is available. Also gives the closure-year gold price in today's US dollars (US CPI-U purchasing power).
+  Also answers "what might remain today" for a site: later exploration (Geological Survey of Queensland mineral
+  boreholes within 2 km, and the company report numbers the survey links to the site with title, year and report
+  link), modern reported mineral resources and reserves from Geoscience Australia (tonnes, grade, category,
+  reporting date, source; labelled as modern reported resources, never as gold left and kept apart from historical
+  production), access and infrastructure (straight-line distance to the nearest town, major road and operational
+  power line), and environmental records (environmental authorities, abandoned-mines records incl. tailings).
+  Ask "what might remain at <site>" for all four, one category ("drilling near Mount Morgan", "modern resources at
+  Brilliant Lode", "access and infrastructure at Gympie", "environmental records at Kidston"), or "everything about
+  <site> including what might remain today" for land and rights plus all four in one call.
 base_url: https://goldrush.up.railway.app
 
 rate_limit_per_sec: 1
@@ -34,6 +43,8 @@ docs:
 limitations:
   - code: LAND_LIVE_QUERIES
     message: Land and rights answers query the Queensland Government and National Native Title Tribunal map services at answer time (2 km buffer, cached 24 hours per site). A layer that does not answer is listed under not_found with the reason. Tenure expiry dates and the absence of a tenure do not establish that ground is available; that needs legal confirmation. Native title records are as published by the NNTT on the checked date.
+  - code: REMAINING_NOT_A_RESERVE_ESTIMATE
+    message: Exploration, resource, access and environment rows show what was drilled, reported, mapped or registered near the site. They are not an estimate of gold remaining and say nothing about whether a deposit is economic. Resource figures are modern reported resources as published by Geoscience Australia, not historical production. Distances are straight-line, not route distance. Source layers that do not answer, and registers with no keyless spatial layer (contaminated land, environmental management), are listed under not_found.
   - code: QUEENSLAND_GOLD_ONLY
     message: Covers the 8,132 Queensland gold workings in the Geological Survey of Queensland MINOCC record. Of those, about 2,590 have a production figure, 2,450 a whole-site gold total, 2,450 years worked and 2,050 a tenure holder or company in MINOCC 2017 (a 2017 release); for the rest the answer says not_found.
   - code: MAX_PARAM_LENGTH
@@ -58,6 +69,13 @@ endpoints:
       Mount Morgan") return tenure, native_title and land_status rows, each with source_ref, source_url, record id, whether it
       contains the site point or lies within 2 km, and checked_at, plus a fixed caveat. "Gold price at closure vs today for
       Brilliant Lode" returns gold_price_real: the closure-year price and the same amount in today's US dollars (US CPI-U).
+      "What might remain at Ravenswood" returns exploration (boreholes within 2 km, company reports linked by MINOCC),
+      resources (modern reported resources and reserves, labelled), access (nearest town, major road and power line,
+      straight line) and environment (environmental authorities, abandoned-mines records) rows, each with source_ref,
+      source_url, record id, relation (within_buffer, linked_by_minocc, nearest_straight_line or contains_site_point)
+      and checked_at, plus fixed caveats. "Drilling near Mount Morgan", "modern resources at Brilliant Lode", "access
+      and infrastructure at Gympie" and "environmental records at Kidston" return one category. "Everything about Mount
+      Morgan including what might remain today" returns land and rights plus all four in one call.
     intents: [RESEARCH_QUERY_GENERAL]
     params:
       query:

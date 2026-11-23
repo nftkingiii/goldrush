@@ -1,6 +1,7 @@
 import { buildSiteAnswer } from "./answer.ts";
 import { BUFFER_M, CAVEAT, createLand, describeLand, type Category, type Land } from "./land.ts";
 import { MINOCC_KEY } from "./minocc.ts";
+import { ACCESS_LABEL, CAVEATS, REMAINING_CAVEAT, REM_CATEGORIES, RESOURCE_LABEL, createRemaining, describeRemaining, type RemCategory, type Remaining } from "./remaining.ts";
 import { REAL_LABEL, realGoldPrice } from "./real.ts";
 import { resolveSite, type Site } from "./match.ts";
 import { describePrices, lookupPrices, parseSpan } from "./price.ts";
@@ -49,6 +50,27 @@ export function landCategories(q: string): Category[] {
   return out.length ? out : ALL;
 }
 
+const EXPLORATION_WORDS = /\b(drill|drills|drilling|drilled|drillhole|drillholes|borehole|boreholes|bore holes?|company reports?|cr numbers?|exploration (drilling|history|reports?|activity|records?)|later exploration|geoscience reports?)\b/i;
+const RESOURCE_WORDS = /\b(resources?|reserves?|jorc|ounces in the ground)\b/i;
+const ACCESS_WORDS = /\b(infrastructure|nearest (town|road|power|locality)|distance to|how far|power lines?|transmission lines?|electricity|grid)\b/i;
+const ENVIRONMENT_WORDS = /\b(environment|environmental|contaminat\w*|liabilit\w+|rehabilitation|tailings)\b/i;
+const REMAIN_ALL = /\b(what (might|may|could) (still )?remain|might remain|remaining today|remains? today|what is left|what's left)\b/i;
+const FULL_DOSSIER = /\b(full (dossier|report)|everything today|dossier)\b/i;
+
+/** Which of exploration, resources, access and environment a question asks for; "what might remain" asks for all four. Empty if none. */
+export function remainingCategories(q: string): RemCategory[] {
+  if (REMAIN_ALL.test(q) || FULL_DOSSIER.test(q)) return REM_CATEGORIES;
+  const out: RemCategory[] = [];
+  if (EXPLORATION_WORDS.test(q)) out.push("exploration");
+  if (RESOURCE_WORDS.test(q)) out.push("resources");
+  if (ACCESS_WORDS.test(q)) out.push("access");
+  if (ENVIRONMENT_WORDS.test(q)) out.push("environment");
+  return out;
+}
+export const isRemainingQuestion = (q: string) => remainingCategories(q).length > 0 && !/\bprice\b/i.test(q);
+/** The "everything" question: land and rights plus what might remain, in one call. */
+export const wantsLandToo = (q: string) => FULL_DOSSIER.test(q) || (isRemainingQuestion(q) && /\b(everything|land and rights)\b/i.test(q));
+
 export interface HandlerDeps {
   fetch?: typeof fetch;
   now?: () => Date;
@@ -57,6 +79,7 @@ export interface HandlerDeps {
 
 export function createHandler(store: Store, deps: HandlerDeps = {}) {
   const land: Land = createLand({ fetch: deps.fetch ?? fetch, now: deps.now ?? (() => new Date()), timeoutMs: deps.timeoutMs });
+  const remaining: Remaining = createRemaining({ fetch: deps.fetch ?? fetch, now: deps.now ?? (() => new Date()), timeoutMs: deps.timeoutMs }, land);
   function price(question: string): Reply {
     if (/\b(silver|copper|zinc|platinum|oil)\b/i.test(question) && !/\bgold\b/i.test(question)) {
       return { status: 422, body: { error: "unsupported_commodity", supported: ["gold"] } };
@@ -127,6 +150,46 @@ export function createHandler(store: Store, deps: HandlerDeps = {}) {
     };
   }
 
+  async function remainingReply(question: string): Promise<Reply> {
+    const r = resolve(question);
+    if ("status" in r) return r;
+    const cats = remainingCategories(question);
+    const withLand = wantsLandToo(question);
+    const cr = (store.records.get(r.site.site_no) ?? []).flatMap((x) => (x.kind === "reference" ? x.cr_numbers : []));
+    const [rem, landRes] = await Promise.all([remaining.query(r.site, cats, cr), withLand ? land.query(r.site, ALL) : Promise.resolve(null)]);
+    const head = siteHead(r.site, r.matchedBy);
+    const dr = describeRemaining(head.site_name, r.site.site_no, rem, cats);
+    const dl = landRes ? describeLand(head.site_name, r.site.site_no, landRes, ALL) : null;
+    const checks = [...(landRes?.checks ?? []), ...rem.checks];
+    const sources = [...new Set(checks.map((c) => c.source_url))];
+    const allCats = [...(landRes ? ALL : []), ...cats];
+    return {
+      status: 200,
+      body: {
+        answer: dl ? `${dl.answer} ${dr.answer}` : dr.answer, source_count: sources.length, sources,
+        brief: dl ? `${head.site_name}: land and what might remain`.slice(0, 80) : dr.brief, ...head,
+        ...Object.fromEntries(allCats.map((c) => [c, landRes && (ALL as string[]).includes(c) ? landRes.rows[c as Category] : rem.rows[c as RemCategory]])),
+        not_found: [...(landRes?.not_found ?? []), ...rem.not_found], notes: [...(landRes?.notes ?? []), ...rem.notes],
+        ...(landRes ? { caveat: CAVEAT } : {}),
+        remaining_caveat: REMAINING_CAVEAT, caveats: Object.fromEntries(cats.map((c) => [c, CAVEATS[c]])),
+        labels: { resources: RESOURCE_LABEL, access: ACCESS_LABEL },
+        buffer: {
+          point_in_polygon: Boolean(landRes), within_metres: BUFFER_M,
+          note: `boreholes, resource deposits, authorities and abandoned-mines records within ${BUFFER_M / 1000} km of the GSQ MINOCC site point (accuracy ${r.site.accuracy_m ?? "not stated"} m); access rows are the nearest feature at any distance, straight line`,
+        },
+        checks, checked_at: rem.checked_at, categories: allCats,
+        calls: { this_response: 1, note: "one question returns every category asked for; with the history question (/ask for production and closure) a full report is 2 paid calls, or 3 if land and remaining are asked separately" },
+        licences: {
+          gsq_boreholes_and_report_index: "Service iteminfo, quoted: \"This service is licenced under a Creative Commons — Attribution 4.0 International licence.\" Attribution: © State of Queensland (Department of Natural Resources and Mines, Manufacturing and Regional and Rural Development) 2026",
+          geoscience_australia: "Mineral deposits WFS AccessConstraints, quoted: \"Copyright Commonwealth of Australia (Geoscience Australia) 2022. This material is released free under the Creative Commons Attribution 4.0 International Licence.\" Electricity infrastructure: \"This material is released under the Creative Commons Attribution 4.0 International License.\"",
+          geoscape_via_digital_atlas: "Towns and roads: item licence \"Creative Commons Attribution 4.0 International\"; \"Incorporates or developed using Administrative Boundaries / Roads © Geoscape Australia\"",
+          queensland_environment: "Environmental authority locations: © State of Queensland (Department of Environment, Tourism, Science and Innovation) 2026; the service's item licence is Creative Commons Attribution 4.0",
+          ...(landRes ? { queensland_services: "State of Queensland services; see the land and rights licence notes", nntt: "NNTT spatial data: reproduction of the information is permitted and is to be attributed to the NNTT (© Commonwealth of Australia); general information only, not legal advice" } : {}),
+        },
+      },
+    };
+  }
+
   function realReply(question: string): Reply {
     const r = resolve(question);
     if ("status" in r) return r;
@@ -169,6 +232,7 @@ export function createHandler(store: Store, deps: HandlerDeps = {}) {
       const q = readQuestion(query);
       if ("status" in q) return q;
       if (isRealPriceQuestion(q.question)) return realReply(q.question);
+      if (isRemainingQuestion(q.question)) return remainingReply(q.question);
       if (isLandQuestion(q.question)) return landReply(q.question);
       return this.ask(query);
     },
